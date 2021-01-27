@@ -10,7 +10,7 @@ class App extends Component {
   };
 
   resetBoard = () => {
-    this.setState({ moves: []});
+    this.setState({ moves: [], winner: null });
   }
 
   getPiece = (x, y) => {
@@ -20,63 +20,71 @@ class App extends Component {
     return list[0]
   }
 
-  checkForWin = (x, y, player) => {
-    let winningMoves = [{ x, y }];
-    for(let column = x + 1; column < x + 4; column += 1) {
-      const checkPiece = this.getPiece(column, y);
+  getWinningMovesForVelocity = (xPosition, yPosition, xVelocity, yVelocity) => {
+    const winningMoves = [{ x: xPosition, y: yPosition }];
+    const player = this.getPiece(xPosition, yPosition).player;
+
+    for(let delta = 1; delta < 4; delta += 1) {
+      const checkX = xPosition + xVelocity * delta;
+      const checkY = yPosition + yVelocity * delta;
+
+      const checkPiece = this.getPiece(checkX, checkY);
       if(checkPiece && checkPiece.player === player) {
-        winningMoves.push(column, y)
+        winningMoves.push({x: checkX, y: checkY});
       } else {
         break;
       }
-    }
-    for(let column = x - 1; column < x - 4; column -= 1) {
-      const checkPiece = this.getPiece(column, y);
-      if(checkPiece && checkPiece.player === player) {
-        winningMoves.push(column, y)
-      } else {
-        break;
-      }
-    }
-    if(winningMoves.length > 3) {
-      this.setState({ winner: player, winningMoves });
-      return true;
     }
 
-    for(let row = y + 1; row < y + 4; row += 1) {
-      const checkPiece = this.getPiece(x,row);
+    for(let delta = -1; delta > -4; delta -= 1) {
+      const checkX = xPosition + xVelocity * delta;
+      const checkY = yPosition + yVelocity * delta;
+
+      const checkPiece = this.getPiece(checkX, checkY);
       if(checkPiece && checkPiece.player === player) {
-        winningMoves.push(x,row);
+        winningMoves.push({x: checkX, y: checkY});
       } else {
         break;
       }
     }
-    for(let row = y - 1; row < y - 4; row -= 1) {
-      const checkPiece = this.getPiece(x,row);
-      if(checkPiece && checkPiece.player === player) {
-        winningMoves.push(x,row);
-      } else {
-        break;
+
+    return winningMoves;
+  }
+
+  checkForWin = (x, y) => {
+    const velocities = [{ x: 1, y: 0}, { x: 0, y: 1}, { x: -1, y: 1}, { x: 1, y: 1}];
+    for(let idx = 0; idx < velocities.length; idx += 1) {
+      const element = velocities[idx];
+      const winningMoves = this.getWinningMovesForVelocity(x, y, element.x, element.y);
+      if(winningMoves.length > 3) {
+        this.setState({ winner: this.getPiece(x,y).player, winningMoves })
       }
     }
-    if(winningMoves.length > 3) {
-      this.setState({ winner: player, winningMoves });
-      return true;
-    }
+
+
   }
 
   addMove = (x, y) => {
     const { playerTurn } = this.state;
     const nextPlayerTurn = playerTurn === 'red' ? 'yellow' :'red';
-    // check for a win, based on this next move
-    this.setState({ moves: this.state.moves.concat({ x, y, player: playerTurn }), playerTurn: nextPlayerTurn}, this.checkForWin(x, y, playerTurn));
+    let availableYPosition = null;
+    for(let position = this.state.rows - 1; position >= 0; position--) {
+      if(!this.getPiece(x, position)) {
+        availableYPosition = position;
+        break;
+      }
+    }
+    if(availableYPosition !== null) {
+      this.setState({ moves: this.state.moves.concat({ x, y: availableYPosition, player: playerTurn }), playerTurn: nextPlayerTurn}, () => this.checkForWin(x, availableYPosition, playerTurn));
+      
+    }
   }
 
   renderBoard() {
     const { rows, columns, winner } = this.state;
     const rowViews = [];
 
-    for (let row = 0; row < this.state.rows; row++) {
+    for (let row = 0; row < this.state.rows; row += 1) {
       const columnViews = [];
       for (let column = 0; column < this.state.columns; column += 1) {
         const piece = this.getPiece(column, row);
@@ -94,17 +102,20 @@ class App extends Component {
     }
     return (
       <div style={{ backgroundColor: 'red', display: 'flex', flexDirection: 'column' }}>
-        {winner && <div onClick={this.resetBoard} style={{ position: 'absolute', backgroundColor: 'rgba(0, 100, 0, .2' }} > {`${winner} WINS!!`}</div>} 
+        {winner && <div onClick={this.resetBoard} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, top: 0, zIndex: 3, backgroundColor: 'rgba(0, 0, 0, .5)', diplay: 'flex', 
+        justifyContent: 'center', alignItems: 'center', color: '#fff', fontWeight: '200', fontSize: '8VW' }} > {`${winner} WINS!!`}</div>} 
         {rowViews}
       </div>
     )
   }
   render() { 
     const { style } = this.props;
+    const { playerTurn } = this.state
     return ( 
-      <div style={style ? Object.assign({}, styles.container, style) : styles.container}>
+      <div style={{ ...styles.container, backgroundColor: playerTurn }} >
         <div>
           {this.renderBoard()}
+          <button onClick={this.resetBoard}>Clear Board</button>
         </div>
       </div>
       
