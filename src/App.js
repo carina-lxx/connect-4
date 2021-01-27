@@ -20,14 +20,60 @@ class App extends Component {
     return list[0]
   }
 
+  checkForWin = (x, y, player) => {
+    let winningMoves = [{ x, y }];
+    for(let column = x + 1; column < x + 4; column += 1) {
+      const checkPiece = this.getPiece(column, y);
+      if(checkPiece && checkPiece.player === player) {
+        winningMoves.push(column, y)
+      } else {
+        break;
+      }
+    }
+    for(let column = x - 1; column < x - 4; column -= 1) {
+      const checkPiece = this.getPiece(column, y);
+      if(checkPiece && checkPiece.player === player) {
+        winningMoves.push(column, y)
+      } else {
+        break;
+      }
+    }
+    if(winningMoves.length > 3) {
+      this.setState({ winner: player, winningMoves });
+      return true;
+    }
+
+    for(let row = y + 1; row < y + 4; row += 1) {
+      const checkPiece = this.getPiece(x,row);
+      if(checkPiece && checkPiece.player === player) {
+        winningMoves.push(x,row);
+      } else {
+        break;
+      }
+    }
+    for(let row = y - 1; row < y - 4; row -= 1) {
+      const checkPiece = this.getPiece(x,row);
+      if(checkPiece && checkPiece.player === player) {
+        winningMoves.push(x,row);
+      } else {
+        break;
+      }
+    }
+    if(winningMoves.length > 3) {
+      this.setState({ winner: player, winningMoves });
+      return true;
+    }
+  }
+
   addMove = (x, y) => {
     const { playerTurn } = this.state;
-    const nextPlayerTurn = playerTurn === 'red' ? 'yellow' :'red'
-    this.setState({ moves: this.state.moves.concat({ x, y, player: playerTurn }), playerTurn: nextPlayerTurn})
+    const nextPlayerTurn = playerTurn === 'red' ? 'yellow' :'red';
+    // check for a win, based on this next move
+    this.setState({ moves: this.state.moves.concat({ x, y, player: playerTurn }), playerTurn: nextPlayerTurn}, this.checkForWin(x, y, playerTurn));
   }
 
   renderBoard() {
-    const { rows, columns } = this.state;
+    const { rows, columns, winner } = this.state;
     const rowViews = [];
 
     for (let row = 0; row < this.state.rows; row++) {
@@ -48,6 +94,7 @@ class App extends Component {
     }
     return (
       <div style={{ backgroundColor: 'red', display: 'flex', flexDirection: 'column' }}>
+        {winner && <div onClick={this.resetBoard} style={{ position: 'absolute', backgroundColor: 'rgba(0, 100, 0, .2' }} > {`${winner} WINS!!`}</div>} 
         {rowViews}
       </div>
     )
